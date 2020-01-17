@@ -28,6 +28,8 @@ $lblChapter = GUICtrlCreateLabel("", 56, 72, 34, 17)
 $edtOutput = GUICtrlCreateEdit("", 16, 104, 145, 321, $ES_READONLY)
 GUICtrlSetData(-1, "Go to the Chapter and click GO!")
 $btnGo = GUICtrlCreateButton("GO", 104, 48, 59, 49, $BS_DEFPUSHBUTTON)
+$chkStop = GUICtrlCreateCheckbox("FULL STOP", 0, 88, 97, 17, BitOR($GUI_SS_DEFAULT_CHECKBOX,$BS_RIGHTBUTTON,$BS_RIGHT))
+GUICtrlSetState($chkStop, $GUI_HIDE)
 GUISetState(@SW_SHOW)
 #EndRegion ### END Koda GUI section ###
 
@@ -36,17 +38,17 @@ $HW = "[REGEXPTITLE:(?i)(.*Hero Wars.*)]"
 $energy = InputBox("Energy", "Input your energy", "", "", 100, 140)
 
 $normCost = 6
-$normGo = 10
+$normGo = 100
 $specCost = 12
 $specGo = 3
 
-Local $pos1, $pos2, $boss, $chapter, $y = 0, $x = 0, $click = 0, $writeOut, $info, $i = 1, $bossX1, $bossX2, $bossY1, $bossY2
+Local $pos1, $pos2, $boss, $chapter, $y = 0, $x = 0, $click = 0, $writeOut, $info, $i = 1, $bossX1, $bossX2, $bossY1, $bossY2, $currentPos, $currentWin
 
 GUICtrlSetData($lblGo1, $i)
 GUICtrlSetData($lblEnergy, $energy)
 
 Func ClickIt()
-	MouseClick("left", $x, $y)
+	MouseClick("left", $x, $y, 1)
 	$x = 0
 	$y = 0
 EndFunc
@@ -62,9 +64,18 @@ Func WriteOutput($info)
 	_GUICtrlEdit_Scroll($edtOutput, $SB_PAGEDOWN)
 EndFunc
 
+Func ClearOutput()
+	$writeOut = ""
+	GUICtrlSetData($edtOutput, $writeOut)
+EndFunc
+
+Func _IsChecked($idControlID)
+    Return BitAND(GUICtrlRead($idControlID), $GUI_CHECKED) = $GUI_CHECKED
+EndFunc   ;==>_IsChecked
+
 WinWaitActive($HW,"")
 ; If on Main screen, go to Campaign
-$campaign = _ImageSearch('Images\01-Campaign.bmp', 0, $x, $y, 50)
+$campaign = _ImageSearch('Images\01-Campaign.bmp', 0, $x, $y, 75)
 If $campaign Then
 	Sleep(1000)
 	ClickIt()
@@ -101,7 +112,6 @@ While 1
 						$missioncost = $boss
 					EndIf
 				EndIf
-
 			Else
 				$type = "Normal"
 				$go = $normGo
@@ -122,6 +132,7 @@ While 1
 			WinWaitActive($HW,"")
 
 			While $i <= $go
+				GUICtrlSetState($chkStop, $GUI_SHOW)
 				$maxruns = $energy / $missioncost
 				If $maxruns < $go Then Exit
 				$energy = $energy - $missioncost
@@ -167,14 +178,23 @@ While 1
 					$continue = _ImageSearch('Images\06-Continue.bmp', 0, $x, $y, 50)
 					Sleep(1000)
 					If $continue = 1 Then ExitLoop
+					If _IsChecked($chkStop) Then
+						WriteOutput("FULL STOP")
+						ExitLoop 2
+					EndIf
 				WEnd
 				WriteOutput("Continue " & $continue & " " & $x & "," & $y)
-				Sleep(3000) ; 1.5 min
+				Sleep(3000)
 				ClickIt()
 				Sleep(1000)
 				$i = $i + 1
+
+				ClearOutput()
 			WEnd
 			GUICtrlSetState($btnGo, $GUI_ENABLE)
+			GUICtrlSetState($chkStop, $GUI_UNCHECKED)
+			GUICtrlSetState($chkStop, $GUI_HIDE)
+			ClearOutput()
 			$i = 1
 			$click = 0
 			$vipprompt =0
@@ -188,7 +208,6 @@ Func ChapterCheck()
 	; Look for special missions to determine chapter, and re-assign Cost values if needed
 	; Chapter 1 has 3 specials, all others have 4
 	$Artemis = _ImageSearch('Images\Artemis.bmp', 0, $x, $y, 50)
-	;~ ConsoleWrite("Artemis " & $Artemis & " " & $x & "," & $y & @CRLF)
 	WriteOutput("Artemis " & $Artemis & " " & $x & "," & $y)
 	ResetXY()
 	$Astaroth = _ImageSearch('Images\Astaroth.bmp', 0, $x, $y, 50)
@@ -281,6 +300,12 @@ Func ChapterCheck()
 		$specCost = 16
 	ElseIf $Daredevil AND $Phobos AND $Artemis AND $Mojo Then
 		$chapter = 8
+		$normCost = 8
+		$specCost = 16
+		$boss = 24
+	ElseIf $Daredevil AND $Aurora AND $Peppy Then ;AND $Fox ; Fox is partially obscured by the chapter header, combo does not exist elsewhere
+		$chapter = 9
+		$normCost = 8
 		$specCost = 16
 	EndIf
 
